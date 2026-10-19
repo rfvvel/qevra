@@ -1,0 +1,51 @@
+{
+  "name": "qevra",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "npm run build -w @qevra/contracts && concurrently -k -n contracts,api,web \"npm run dev -w @qevra/contracts\" \"npm run dev -w @qevra/api\" \"npm run dev -w @qevra/web\"",
+    "dev:web": "npm run build -w @qevra/contracts && npm run dev -w @qevra/web",
+    "dev:api": "npm run build -w @qevra/contracts && npm run dev -w @qevra/api",
+    "build": "npm run build -w @qevra/contracts && npm run build -w @qevra/api && npm run build -w @qevra/web",
+    "typecheck": "npm run build -w @qevra/contracts && npm run typecheck --workspaces",
+    "lint": "eslint .",
+    "test": "npm run build -w @qevra/contracts && tsx --test tests/*.test.ts",
+    "check": "npm run typecheck && npm run lint && npm test && npm run build",
+    "db:migrate:foundation": "node scripts/migrate-foundation.mjs",
+    "test:database": "node scripts/test-database.mjs",
+    "test:whatsapp": "node scripts/test-whatsapp.mjs",
+    "test:whatsapp:database": "node scripts/test-whatsapp.mjs --database",
+    "verify:environment": "node scripts/inspect-runtime.mjs",
+    "verify:browser": "npm run build -w @qevra/contracts && npm run build -w @qevra/api && node scripts/verify-browser.mjs",
+    "audit:secrets": "node scripts/audit-secrets.mjs",
+    "verify:phase2": "npm run build -w @qevra/contracts && node --import tsx scripts/verify-phase2-browser.mjs",
+    "db:migrate": "node scripts/migrate.mjs",
+    "seed:queue": "npm run build -w @qevra/contracts && node --import tsx scripts/seed-queue.mjs",
+    "verify:phase3": "npm run build -w @qevra/contracts && node --import tsx scripts/verify-phase3-browser.mjs",
+    "verify:phase4": "npm run build -w @qevra/contracts && node --import tsx scripts/verify-phase4-browser.mjs",
+    "verify:phase5": "npm run build -w @qevra/contracts && node --import tsx scripts/verify-phase5-browser.mjs",
+    "verify:phase6": "npm run build -w @qevra/contracts && node --import tsx scripts/verify-phase6-browser.mjs",
+    "verify:phase7": "npm run build -w @qevra/contracts && node --import tsx scripts/verify-phase7-browser.mjs",
+    "verify:phase8": "npm run build -w @qevra/contracts && node --import tsx scripts/verify-phase8-browser.mjs",
+    "verify:production": "node scripts/verify-production-browser.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^24.0.0",
+    "concurrently": "^9.2.0",
+    "eslint": "^9.39.0",
+    "globals": "^16.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.46.0"
+  },
+  "type": "module"
+}

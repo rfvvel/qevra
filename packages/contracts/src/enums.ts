@@ -1,0 +1,4 @@
+export enum BusinessRole { OWNER = 'OWNER', MANAGER = 'MANAGER', STAFF = 'STAFF' }
+export enum QueueStatus { WAITING = 'WAITING', CALLED = 'CALLED', SERVING = 'SERVING', COMPLETED = 'COMPLETED', SKIPPED = 'SKIPPED', CANCELLED = 'CANCELLED', NO_SHOW = 'NO_SHOW' }
+export enum PaymentMode { NONE = 'NONE', DEPOSIT = 'DEPOSIT', FULL = 'FULL' }
+export enum PaymentStatus { PENDING = 'PENDING', PAID = 'PAID', FAILED = 'FAILED', EXPIRED = 'EXPIRED', REFUNDED = 'REFUNDED' }

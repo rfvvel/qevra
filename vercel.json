@@ -1,0 +1,6 @@
+{
+  "buildCommand": "npm run build -w @qevra/contracts && npm run build -w @qevra/web",
+  "installCommand": "npm ci --include=dev",
+  "outputDirectory": "apps/web/dist",
+  "rewrites": [{"source": "/(.*)", "destination": "/index.html"}]
+}
