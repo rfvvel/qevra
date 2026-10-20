@@ -3,6 +3,7 @@ import {env,whatsapp} from './config/env.js';
 import {assertProductionReady} from './config/production.js';
 import {withTransaction} from './db/transaction.js';
 import {closePool} from './db/client.js';
+import {logDatabaseFailure} from './db/diagnostics.js';
 import {MetaWhatsAppProvider} from './modules/notifications/meta-provider.js';
 import {WhatsAppOutbox} from './modules/notifications/outbox.js';
 import {TwilioWhatsAppProvider} from './modules/notifications/twilio-provider.js';
@@ -22,7 +23,7 @@ console.log('WhatsApp outbox worker started.');
 try{
   while(!stopping){
     try{if(await worker.tick())continue;}
-    catch{console.error('WhatsApp worker operation failed; inspect sanitized outbox status.');}
+    catch(error){logDatabaseFailure('worker',error);}
     await delay(2000,undefined,{signal:wake.signal}).catch(()=>{});
   }
 }finally{await closePool();console.log('WhatsApp outbox worker stopped.');}

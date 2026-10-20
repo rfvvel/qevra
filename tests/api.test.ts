@@ -93,12 +93,17 @@ test('database health reports connectivity without exposing query results', asyn
 });
 
 test('database failures are sanitized and return 503', async () => {
-  const stub = mock.method(getPool(), 'query', async () => { throw new Error('sensitive-driver-detail'); });
+  const logs: string[] = [];
+  const logger = mock.method(console, 'error', (line: string) => { logs.push(line); });
+  const stub = mock.method(getPool(), 'query', async () => { throw Object.assign(new Error('sensitive-driver-detail'), {code:'ERR_TLS_CERT_ALTNAME_INVALID'}); });
   try {
     const response = await fetch(`${base}/api/v1/health/database`);
     assert.equal(response.status, 503);
     assert.deepEqual(await response.json(), { status: 'error', database: 'unavailable' });
-  } finally { stub.mock.restore(); }
+    assert.deepEqual(logs.map(line => JSON.parse(line)), [{
+      event:'database_operation_failed', source:'health', category:'tls_hostname', code:'ERR_TLS_CERT_ALTNAME_INVALID',
+    }]);
+  } finally { stub.mock.restore(); logger.mock.restore(); }
 });
 
 test('session verification requires a bearer token', async () => {

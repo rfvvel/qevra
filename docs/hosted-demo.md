@@ -61,7 +61,52 @@ If the database certificate needs a custom CA, copy the **trusted CA certificate
 
 Production URLs reject sslrootcert/sslcert/sslkey/ssl and compatibility/host overrides. Remove old Windows paths entirely. No CA file is loaded relative to the workspace, and the untracked local certificate is not needed. Do not set NODE_TLS_REJECT_UNAUTHORIZED to disable TLS or weaken SSL settings. This helper is used by the running API/worker; legacy migration scripts have their own connection handling and are **not** part of this deployment.
 
-## Vercel
+## Diagnosing Railway database readiness safely
+
+The process health endpoint and startup message do not prove database connectivity: the
+pool connects lazily. The database health endpoint performs only `SELECT 1`; its public
+503 response intentionally contains no driver details. After deploying the diagnostic
+change, request `/api/v1/health/database` once and inspect **API runtime/deploy logs**
+for `database_operation_failed`. Idle pool failures and worker loop failures use the
+same safe logger with `source: idle_pool` or `source: worker`. An unknown worker error
+does not prove the failure originated in PostgreSQL.
+
+Example (illustrative, not an observed Railway error):
+```json
+{"event":"database_operation_failed","source":"health","category":"tls_certificate","code":"UNABLE_TO_VERIFY_LEAF_SIGNATURE"}
+```
+
+Only fixed event/source/category and a recognized Node code or five-character SQLSTATE
+are emitted. No messages, stacks, URLs, hosts, query parameters or customer fields are
+logged. Identical consecutive failures per source are limited to one per minute;
+changed categories/codes log immediately. No new environment variables are needed.
+
+| Category/code | Next verification (privately in dashboard) |
+| --- | --- |
+| tls_certificate | Verify the trusted CA for the **chosen Session Pooler endpoint**, not an unrelated/direct endpoint certificate. DATABASE_CA_CERT must contain trusted PEM, not a filename or quoted string. A custom CA replaces Node's default CA list; a valid but wrong CA can break a publicly trusted endpoint. If that endpoint uses a publicly trusted chain, leave the optional custom CA unset. Otherwise use the CA supplied through trusted Supabase configuration/support. Never disable verification. |
+| tls_hostname / ERR_TLS_CERT_ALTNAME_INVALID | Compare the URL DNS hostname with Supabase Connect → Session pooler. Keep that hostname, not an IP, alias or direct DB hostname with pooler identity. Check endpoint/certificate with Supabase if the exact supplied hostname still fails. |
+| dns | Check hostname spelling, project endpoint availability and Railway DNS/outbound networking. |
+| network / timeout | Check outbound TCP to the selected pooler port, Supabase network restrictions and project status. Check pool saturation too: each API/worker process permits up to 10 clients; replicas multiply that. Connect timeout is 5 seconds; query timeout is 10 seconds. A timeout alone does not identify which limit/network hop failed. |
+| authentication / 28xxx | Verify pooler username including project reference, intended project and URL percent-encoding. This code does not establish that the already-verified password is wrong; no password reset is prescribed. |
+| postgresql / 53300 | Review connection limits and concurrent API/worker replicas in Supabase. |
+| postgresql / P0001 or other SQLSTATE | Review Supabase pooler/database logs privately at the matching time; P0001 is generic and must not be assumed to mean a bad password. |
+| unknown | The driver supplied no recognized safe code. Review platform/Supabase status and private service logs; do not add raw error logging. |
+
+Verify DATABASE_URL and DATABASE_CA_CERT on **both** Railway services in the same
+environment. Use the exact Session Pooler host, port and qualified username supplied
+by Supabase, with `/postgres?sslmode=verify-full`; percent-encode password components
+once. Do not change the verified password. Remove obsolete Windows SSL file parameters.
+Check for an unintended PGSSLNEGOTIATION override: normal pg PostgreSQL SSLRequest
+negotiation is expected. Do not enable TLS bypass environment variables.
+Restart/redeploy services after configuration changes; existing processes keep their
+startup environment. No migration, reset, or shared database test is needed.
+
+Production TLS parsing is covered offline with an actual installed pg.Client (never
+connected), verifying custom CA retention, strict verification, pooler identity and
+encoded password parsing. See [node-postgres SSL options](https://node-postgres.com/features/ssl)
+and [Supabase connection methods](https://supabase.com/docs/guides/database/connecting-to-postgres).
+
+## Vercel frontend settings
 
 Import the same repository with Root Directory set to the repository root and the Vite framework preset. The new root vercel.json defines:
 
