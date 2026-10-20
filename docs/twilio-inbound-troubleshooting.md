@@ -66,3 +66,44 @@ window are unchanged; inbound persistence is not itself queue opt-in.
 
 References: [Twilio form parameters](https://www.twilio.com/docs/messaging/guides/webhook-request),
 [request signing](https://www.twilio.com/docs/usage/security).
+
+## Message-resource verification diagnostics
+
+`INBOUND_VERIFICATION` now includes a safe `reason` in server logs only. The public
+response remains the same sanitized 502. No raw provider error/body is logged.
+
+The lookup uses GET `https://api.twilio.com/2010-04-01/Accounts/{AccountSid}/Messages/{MessageSid}.json`
+with Account SID/Auth Token Basic Auth, no redirects and a 15-second timeout.
+Use the account/subaccount that owns the Sandbox and message, with its corresponding
+live Auth Token. This implementation does not accept API-key SID/secret or test
+credentials in those variables. Passing webhook signature verification does not
+prove that the REST resource is available or accessible.
+
+| Reason | Next private check |
+| --- | --- |
+| HTTP_401 / HTTP_403 | REST authentication/authorization was rejected. Check account scope, live versus test credentials, account status and access restrictions. Neither code alone establishes a wrong token. |
+| HTTP_404 | Resource was not found under the requested account. Check account ownership, message existence/deletion and SID in Twilio Console. Do not infer eventual consistency or bypass verification. |
+| HTTP_429 / HTTP_5XX | Rate limit/provider failure. Verification remains closed; retry later according to operator/provider retry policy. No automatic retry loop was added. |
+| HTTP_OTHER | Other non-success HTTP response; inspect Twilio service diagnostics privately. |
+| TRANSPORT_TIMEOUT / TRANSPORT_DNS / TRANSPORT_TLS / TRANSPORT_NETWORK | Timeout, DNS, TLS trust/hostname, or other transport failure. Check Railway outbound access to api.twilio.com and provider availability. Keep TLS verification enabled. |
+| RESPONSE_JSON / RESPONSE_SHAPE | Success response was not valid expected JSON object. |
+| SID_MISMATCH / ACCOUNT_MISMATCH / DIRECTION_MISMATCH | Resource identity does not match the signed inbound request and configured account. |
+| SENDER_MISMATCH / RECIPIENT_MISMATCH | Resource channel addresses do not match the validated sender/Sandbox recipient. No normalization bypass is applied. |
+| TIMESTAMP_INVALID / TIMESTAMP_FUTURE | Missing/non-string/unparseable date_created or future creation time. Check provider resource and clock accuracy; no fallback to receipt time. |
+| UNKNOWN | Unexpected local exception; no exception details are emitted. |
+
+Raw REST JSON uses `account_sid` and `date_created` (RFC 2822 string), even when SDK
+documentation shows camelCase properties. `date_sent` can be null during processing;
+it is not used. Both receiving and received resources are accepted if identity and
+creation time verify. Old/replayed resources retain their original timestamp and
+cannot reopen the sending window. No documented Sandbox-specific verification
+exemption is assumed.
+
+Verified code fixes: distinct failure diagnostics and runtime timestamp type
+validation (previous TypeScript casting could let numeric JSON timestamps be
+interpreted as epoch dates). These do not prove the cause of the hosted failure.
+No change to account selection, address comparisons or future-time rejection was
+justified by the available production evidence.
+
+Reference: [Twilio Message resource](https://www.twilio.com/docs/messaging/api/message-resource),
+[REST authentication](https://www.twilio.com/docs/iam/api).

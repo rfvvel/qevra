@@ -4,7 +4,7 @@ import {z} from 'zod';
 import type {WhatsAppConfiguration} from '../../config/whatsapp.js';
 import type {TransactionRunner} from '../configuration/routes.js';
 import {storeReceipts,type Receipt} from './outbox.js';
-import {TWILIO_WEBHOOK_PATH,validMobile,verifyInbound} from './twilio-provider.js';
+import {TWILIO_WEBHOOK_PATH,validMobile,verifyInbound,InboundVerificationError} from './twilio-provider.js';
 import {databaseDiagnostic} from '../../db/diagnostics.js';
 
 type Rejection = 'METHOD' | 'CONTENT_TYPE' | 'FORM_FIELDS' | 'SIGNATURE' | 'ACCOUNT' |
@@ -13,6 +13,7 @@ type Rejection = 'METHOD' | 'CONTENT_TYPE' | 'FORM_FIELDS' | 'SIGNATURE' | 'ACCO
 // Only locally defined codes and sanitized database categories are logged.
 function reject(res:Response,status:number,code:Rejection,error?:unknown):void{
   console.error(JSON.stringify({event:'twilio_webhook_rejected',code,
+    ...(code==='INBOUND_VERIFICATION'?{reason:error instanceof InboundVerificationError?error.code:'UNKNOWN'}:{}),
     ...(code==='DATABASE'?{database:databaseDiagnostic(error)}:{})}));
   res.status(status).json({error:{code:'TWILIO_'+code}});
 }
@@ -57,7 +58,7 @@ export function createTwilioWebhook(config:WhatsAppConfiguration,run:Transaction
     // Provider HTTP completes before opening a database transaction. No auto-reply.
     let at:Date;
     try{at=await inbound(config,b.MessageSid!,phone);}
-    catch{reject(res,502,'INBOUND_VERIFICATION');return;}
+    catch(error){reject(res,502,'INBOUND_VERIFICATION',error);return;}
     try{
       await run(c=>c.query(`INSERT INTO public.twilio_inbound_messages(account_sid,message_sid,sender,phone_e164,sent_at)
         VALUES($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING`,[config.TWILIO_ACCOUNT_SID,b.MessageSid,config.TWILIO_WHATSAPP_FROM,phone,at]));

@@ -84,6 +84,7 @@ test('real Express stack accepts signed Twilio forms and safely diagnoses each f
     assert.equal(lookups,before);assert.equal(writes.length,2);
     providerFailure=true;
     await failure(await post(),502,'INBOUND_VERIFICATION');
+    assert.equal(JSON.parse(logs.at(-1)!).reason,'TRANSPORT_NETWORK');
     assert.equal(writes.length,2);
     providerFailure=false;databaseFailure=true;
     await failure(await post(),503,'DATABASE');
