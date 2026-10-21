@@ -4,6 +4,7 @@ import type {QueueContext} from './context.js';
 export async function snapshot(client:PoolClient,context:QueueContext):Promise<QueueSnapshot>{
   const current=(await client.query<QueueSessionDto>('SELECT id,business_date::text AS "businessDate",status,revision::text FROM public.queue_sessions WHERE service_id=$1 AND business_date=$2',[context.serviceId,context.businessDate])).rows[0] ?? null;
   const rows=(await client.query<QueueTicketDto & {prefix:string}>(`SELECT t.id,t.queue_session_id AS "sessionId",s.business_date::text AS "businessDate",
+    EXISTS(SELECT 1 FROM public.payments p WHERE p.join_request_id=t.join_request_id AND p.business_id=t.business_id AND p.provider='MOCK' AND p.is_settlement) AS "simulatedPayment",
     t.sequence_number AS "sequenceNumber",t.prefix_snapshot AS prefix,t.queue_order::text AS "queueOrder",t.status,t.counter_id AS "counterId",t.version,j.customer_name AS "customerName",
     t.joined_at AS "joinedAt",t.called_at AS "calledAt",t.serving_at AS "servingAt",t.completed_at AS "completedAt",t.skipped_at AS "skippedAt",t.cancelled_at AS "cancelledAt",t.no_show_at AS "noShowAt"
     FROM public.queue_tickets t JOIN public.queue_sessions s ON s.id=t.queue_session_id JOIN public.join_requests j ON j.id=t.join_request_id

@@ -1,5 +1,6 @@
 import {mockMessages,markNotificationRead} from '../notifications/service.js';
-import {mockWhatsAppEnabled} from '../../config/env.js';
+import {mockWhatsAppEnabled,env} from '../../config/env.js';
+import {demoPaymentLimit} from '../../middleware/demo-payment-limit.js';
 import { paymentService } from '../payments/service.js';
 import { missing } from '../configuration/access.js';
 import {Router} from 'express';
@@ -19,6 +20,7 @@ export function createCustomerRouter(run:TransactionRunner=withTransaction,mockE
     if(!req.actor?.isAnonymous)throw new HttpError(403,'CUSTOMER_REQUIRED','Please return to the service page to continue.');
     next();
   });
+  if(mockEnabled&&env.NODE_ENV==='production')router.use(['/join-requests','/payments'],demoPaymentLimit());
   router.post('/join-requests',async(req,res)=>{
     const body=customerJoinSchema.parse(req.body),key=idempotencyKeySchema.parse(req.get('Idempotency-Key'));
     res.json(await run(c=>join(c,req.actor!.userId,key,body,mockEnabled)));

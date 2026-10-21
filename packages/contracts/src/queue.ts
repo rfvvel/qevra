@@ -17,6 +17,7 @@ export const historyQuerySchema = z.object({
 export type TicketAction = 'call' | 'start' | 'complete' | 'skip' | 'no-show' | 'requeue' | 'cancel';
 export interface QueueSessionDto { id: string; businessDate: string; status: QueueSessionStatus; revision: string; }
 export interface QueueTicketDto {
+  simulatedPayment:boolean;
   id: string; sessionId: string; businessDate: string; number: string; sequenceNumber: number; queueOrder: string;
   status: QueueStatus; counterId: string | null; version: number; customerName: string;
   joinedAt: string; calledAt: string | null; servingAt: string | null; completedAt: string | null;

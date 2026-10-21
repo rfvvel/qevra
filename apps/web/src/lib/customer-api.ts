@@ -18,6 +18,7 @@ export function customerError(error:unknown):string{
     if(error.status===401)return 'We could not restore your ticket on this browser. Reopen the original browser or contact staff.';
     if(error.status===403 || error.status===404)return 'This ticket or service is not available on this browser. Please check the link or contact staff.';
     const messages:Record<string,string>={
+      DEMO_RATE_LIMIT:'Too many demo actions. Please wait one minute and try again.',
       QUEUE_NOT_OPENED:'The queue has not opened yet. Please check again later.',
       QUEUE_PAUSED:'The queue is temporarily paused. Please check again later.',
       QUEUE_CLOSED:'The queue is closed for today.',SERVICE_UNAVAILABLE:'This service is currently unavailable.',

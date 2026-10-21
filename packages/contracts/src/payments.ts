@@ -5,7 +5,7 @@ export const mockPaymentSchema=z.object({outcome:z.enum(['SUCCESS','FAILURE','EX
 export const retryPaymentSchema=z.object({}).strict();
 export type MockPaymentOutcome=z.infer<typeof mockPaymentSchema>['outcome'];
 export type CustomerJoinResult=QueueCommandResult | {outcome:'PAYMENT_REQUIRED';joinRequestId:string;ticketId:null;sessionId:string;revision:string};
-export interface PaymentAttemptDto {id:string;status:PaymentStatus;amount:string;currency:'IDR';paidAt:string|null;expiresAt:string;createdAt:string;}
+export interface PaymentAttemptDto {id:string;provider:string;status:PaymentStatus;amount:string;currency:'IDR';paidAt:string|null;expiresAt:string;createdAt:string;}
 export interface CheckoutDto {
   joinRequest:{id:string;status:string;expiresAt:string};
   service:{name:string;branchName:string;branchSlug:string};

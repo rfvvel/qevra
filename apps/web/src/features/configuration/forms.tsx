@@ -62,7 +62,7 @@ export function ServiceForm({ initial, save, label = 'Save service' }: Props<Ser
     <Field label="Queue prefix" hint="1–5 uppercase letters; unique within this branch."><input className="input" name="queue_prefix" required maxLength={5} defaultValue={initial?.queue_prefix} /></Field>
     <Field label="Payment mode"><select className="input" name="payment_mode" value={mode} onChange={event => setMode(event.target.value as PaymentMode)}><option value="NONE">None</option><option value="DEPOSIT">Deposit</option><option value="FULL">Full payment</option></select></Field>
     {mode === PaymentMode.DEPOSIT && <Field label="Deposit (IDR)"><input className="input" name="deposit_amount" inputMode="numeric" required defaultValue={initial?.deposit_amount || ''} /></Field>}
-    <p className="text-xs text-slate-500">Real payment provider not integrated in MVP. Payment-enabled services use development mock checkout only.</p>
+    <p className="text-xs text-slate-500">Real payment provider not integrated in MVP. Payment-enabled services require explicitly enabled MOCK checkout. Simulasi pembayaran — tidak ada uang asli.</p>
     <label className="flex items-center gap-2 text-sm"><input name="is_active" type="checkbox" defaultChecked={initial?.is_active ?? true} />Service active</label>
     {form.feedback}<Button disabled={form.busy} type="submit">{form.busy ? 'Saving…' : label}</Button>
   </form>;

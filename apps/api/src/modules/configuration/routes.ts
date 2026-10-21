@@ -197,7 +197,7 @@ export function createPublicRouter(run: TransactionRunner = withTransaction, moc
         coalesce((SELECT qs.status::text FROM public.queue_sessions qs WHERE qs.service_id=s.id AND qs.business_date=(clock_timestamp() AT TIME ZONE br.timezone)::date),'NOT_OPENED') AS queue_status
         FROM public.services s JOIN public.branches br ON br.id=s.branch_id AND br.business_id=s.business_id JOIN public.businesses b ON b.id=s.business_id
         WHERE s.business_id=$1 AND s.branch_id=$2 AND s.is_active AND br.is_active AND b.is_active ORDER BY s.name, s.id`, [branch.business_id, branch.id]);
-      return { business_name: branch.business_name, branch: { name: branch.name, public_slug: branch.public_slug, address: branch.address, timezone: branch.timezone }, services: services.rows.map(service=>({...service,online_payment_available:mockEnabled})) };
+      return { business_name: branch.business_name, branch: { name: branch.name, public_slug: branch.public_slug, address: branch.address, timezone: branch.timezone }, services: services.rows.map(service=>({...service,online_payment_available:mockEnabled,payment_simulated:mockEnabled&&service.payment_mode!=='NONE'})) };
     }));
   });
   return router;

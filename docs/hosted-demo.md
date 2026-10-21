@@ -44,7 +44,7 @@ Set these variables on **both** services:
 | PAYMENT_PROVIDER | DISABLED |
 | MOCK_WHATSAPP_ENABLED | false |
 
-Let Railway supply PORT for the API. The worker inherits the shared configuration validator, so it also needs the origin and Supabase settings. The demo flag only permits Twilio selection; all production startup, TLS and payment protections still apply. Even if PAYMENT_PROVIDER is accidentally MOCK, development mock payment endpoints remain unavailable in production. Use NONE services for the hosted demo; DEPOSIT/FULL do not get a production payment bypass. No real gateway is introduced.
+Let Railway supply PORT for the API. The worker inherits the shared configuration validator, so it also needs the origin and Supabase settings. The demo flag only permits Twilio selection; all production startup, TLS and payment protections still apply. MOCK remains unavailable by default. For the separately authorized payment simulation, explicitly set PAYMENT_PROVIDER=MOCK and PAYMENT_HOSTED_DEMO_ENABLED=true on the API; see [hosted demo payments](hosted-demo-payments.md). This enables DEPOSIT/FULL simulated admission across all tenants; no real gateway is introduced.
 
 ## PostgreSQL TLS without Windows paths
 
@@ -149,7 +149,7 @@ Each WhatsApp recipient must still enroll with Twilio's Sandbox join code and se
 2. Configure Vercel/Railway domains and matching variables, then build/start API first. Check process and database health and open a frontend deep link directly.
 3. Register the Twilio inbound webhook. An authorized tester joins the Sandbox and sends a fresh text message. Confirm webhook success without copying credentials, phone numbers or message bodies into logs.
 4. Start the worker. Join an open NONE service through its public branch link with consent. Any additional visitors can join normally; do not opt other people's numbers in for testing. Verify near-turn then call the ticket and verify YOUR_TURN. Check accepted versus delivered/read status separately.
-5. Verify a no-consent customer still receives IN_APP updates, expired/missing inbound evidence skips WhatsApp, and refreshing does not duplicate jobs. Confirm production mock payment endpoints are unavailable. Use mocked tests for provider failures, not unsolicited live messages.
+5. Verify a no-consent customer still receives IN_APP updates, expired/missing inbound evidence skips WhatsApp, and refreshing does not duplicate jobs. Confirm production mock payment endpoints are unavailable unless the separate payment hosted-demo flag is explicitly enabled. Use mocked tests for provider failures, not unsolicited live messages.
 6. Monitor worker errors/backlog, provider usage and Sandbox limits. There is no new general rate limiter, enrollment verifier, automatic STOP handling or guaranteed delivery. An open public demo can consume account quota; existing validation is not a complete anti-abuse system. Stop the worker and disable provider selection when the demo ends.
 
 This change is code-ready for a controlled hosted demo after manual configuration. Database connectivity, deployed browser/Auth behavior, Twilio enrollment/callback reachability and delivery still require the above smoke test. No deployment, schema change or real message was performed during implementation.

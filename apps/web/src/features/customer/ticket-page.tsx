@@ -31,6 +31,7 @@ function TicketView({ticketId}:{ticketId:string}){
   return <div className="mx-auto max-w-lg space-y-5">
     <div><p className="text-sm font-medium text-teal-800">{data.business.name}</p><h1 className="mt-1 text-2xl font-semibold">{data.service.name}</h1><p className="mt-1 text-sm text-slate-500">{data.branch.name}</p></div>
     <ErrorNotice message={error||actionError}/>
+    {ticket.simulatedPayment&&<Panel><p className="font-semibold text-amber-900">SIMULASI PEMBAYARAN — TIDAK ADA UANG ASLI</p><p className="mt-2 text-sm">Tiket antrean aktif. Pembayaran tercatat sebagai MOCK, bukan uang yang diterima.</p></Panel>}
     <section className="rounded-2xl bg-teal-900 px-5 py-8 text-center text-white" aria-label="Your queue ticket">
       <p className="text-xs uppercase tracking-widest text-teal-100">Your number</p><p className="my-5 break-all text-6xl font-semibold tracking-tight sm:text-7xl" data-testid="queue-number">{ticket.queueNumber}</p>
       <p className="text-sm font-medium" data-testid="ticket-status">{ticket.status}</p><p className="mt-3 text-sm leading-relaxed text-teal-50" aria-live="polite">{statusMessages[ticket.status]}</p>

@@ -49,7 +49,7 @@ function QueueWorkspace(){
   }
   function tickets(title:string,rows:QueueTicketDto[],carryover=false){
     return <Panel title={title}>{rows.length===0?<p className="text-sm text-slate-500">No tickets.</p>:<ul className="divide-y divide-slate-100">{rows.map(ticket=><li key={ticket.id} className="py-4">
-      <div className="flex flex-wrap items-center gap-3"><strong className="text-xl tabular-nums">{ticket.number}</strong><span>{ticket.customerName}</span><span className="text-xs text-slate-500">{ticket.status}{ticket.counterId?' · '+data!.counters.find(c=>c.id===ticket.counterId)?.name:''}{carryover?' · '+ticket.businessDate:''}</span></div>
+      <div className="flex flex-wrap items-center gap-3"><strong className="text-xl tabular-nums">{ticket.number}</strong><span>{ticket.customerName}</span>{ticket.simulatedPayment&&<span className="text-xs font-semibold text-amber-800">SIMULASI PEMBAYARAN — TIDAK ADA UANG ASLI</span>}<span className="text-xs text-slate-500">{ticket.status}{ticket.counterId?' · '+data!.counters.find(c=>c.id===ticket.counterId)?.name:''}{carryover?' · '+ticket.businessDate:''}</span></div>
       <div className="mt-3 flex flex-wrap gap-2">
         {ticket.status==='WAITING' && !carryover && <Button disabled={disabled || !open || !selected} onClick={()=>ticketAction(ticket,'call')}>Call {ticket.number}</Button>}
         {ticket.status==='CALLED' && <><Button disabled={disabled} onClick={()=>ticketAction(ticket,'start')}>Start service</Button><Button disabled={disabled} onClick={()=>ticketAction(ticket,'skip')}>Skip</Button><Button disabled={disabled} onClick={()=>ticketAction(ticket,'no-show')}>No show</Button></>}

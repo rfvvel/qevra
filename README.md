@@ -64,9 +64,9 @@ workspace, so the API reads its own `.env`. Real `.env` files are ignored by Git
 | Web | `VITE_API_URL` | `/api/v1` by default; absolute API URL for separate hosting later |
 | Web | `VITE_SUPABASE_URL` | Project URL, required only for Auth features |
 | Web | `VITE_SUPABASE_PUBLISHABLE_KEY` | Public publishable key or legacy anon key |
-| API | `NODE_ENV` | development/test/production; production disables mock payments |
+| API | `NODE_ENV` | development/test/production; production denies MOCK unless explicitly enabled for hosted demo |
 | API | `MOCK_WHATSAPP_ENABLED` | true enables development-only simulated WhatsApp; false by default |
-| API | `PAYMENT_PROVIDER` | MOCK for development simulation, DISABLED by default |
+| API | `PAYMENT_PROVIDER` | MOCK simulation; production additionally requires PAYMENT_HOSTED_DEMO_ENABLED=true |
 | API | `PORT` | Defaults to 3001 |
 | API | `WEB_ORIGIN` | Allowed browser origin; defaults to http://localhost:5173 |
 | API | `SUPABASE_URL` | Same Supabase project URL |
@@ -188,7 +188,7 @@ Run `npm run db:migrate` for pending development migrations and `npm run verify:
 
 DEPOSIT and FULL now require a verified mock payment before admission. Checkout keeps price snapshots, payment attempt history and explicit reconciliation when a PAID request cannot receive a ticket. No real money moves.
 
-Set `NODE_ENV=development` and `PAYMENT_PROVIDER=MOCK` in the API environment, apply pending migrations with `npm run db:migrate`, and run `npm run dev`. Run `npm run verify:phase5` for the real browser flow. See [Phase 5 documentation](docs/phase-5.md) for APIs, transaction guarantees, security, limitations and the manual demo. Production disables mock controls/endpoints.
+Set `NODE_ENV=development` and `PAYMENT_PROVIDER=MOCK` in the API environment, apply pending migrations with `npm run db:migrate`, and run `npm run dev`. Run `npm run verify:phase5` for the real browser flow. See [Phase 5 documentation](docs/phase-5.md) for APIs, transaction guarantees, security, limitations and the manual demo. Production disables mock controls/endpoints by default; see the explicit [hosted-demo exception](docs/hosted-demo-payments.md).
 
 ## Phase 6 customer alerts
 
@@ -242,3 +242,5 @@ consent do not open the 24-hour free-form window. Production requires the explic
 The additional migration is prepared only; no hosted migration or delivery was run.
 
 Hosted Railway API/worker + Vercel instructions: [hosted demo guide](docs/hosted-demo.md). Public queues have no recipient allowlist or demo participant cap.
+
+Hosted-demo payment activation and safeguards: [docs/hosted-demo-payments.md](docs/hosted-demo-payments.md).

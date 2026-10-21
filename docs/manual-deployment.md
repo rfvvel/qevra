@@ -1,3 +1,5 @@
+> Optional hosted-demo exception: [MOCK payments](hosted-demo-payments.md). Production payment restrictions below describe the secure default.
+
 # Manual deployment guide (no deployment performed)
 
 For the current Railway + Vercel Twilio hosted demo, follow [hosted-demo.md](hosted-demo.md), which supersedes the original MVP-only instructions below.

@@ -85,7 +85,7 @@ export class PaymentService {
     const payment=payments.find(value=>value.is_settlement)??payments[payments.length-1]!;
     const ticket=(await client.query<{id:string}>('SELECT id FROM public.queue_tickets WHERE join_request_id=$1',[id])).rows[0];
     const labels=(await client.query<{name:string;public_slug:string}>('SELECT name,public_slug FROM public.branches WHERE id=$1',[r.branch_id])).rows[0]!;
-    const dto=(p:PaymentRow):PaymentAttemptDto=>({id:p.id,status:p.status,amount:p.amount,currency:p.currency,paidAt:p.paid_at?.toISOString()??null,expiresAt:p.expires_at.toISOString(),createdAt:p.created_at.toISOString()});
+    const dto=(p:PaymentRow):PaymentAttemptDto=>({id:p.id,provider:p.provider,status:p.status,amount:p.amount,currency:p.currency,paidAt:p.paid_at?.toISOString()??null,expiresAt:p.expires_at.toISOString(),createdAt:p.created_at.toISOString()});
     const active=(await client.query("SELECT 1 FROM public.queue_tickets WHERE service_id=$1 AND customer_auth_id=$2 AND status IN ('WAITING','CALLED','SERVING')",[r.service_id,userId])).rowCount;
     return {joinRequest:{id:r.id,status:r.status,expiresAt:r.expires_at.toISOString()},
       service:{name:locked.context.serviceName,branchName:labels.name,branchSlug:labels.public_slug},

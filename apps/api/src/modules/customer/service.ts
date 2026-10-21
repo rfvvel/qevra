@@ -61,6 +61,7 @@ export async function ticketSnapshot(client:PoolClient,userId:string,ticketId:st
   const scope=await ownedScope(client,userId,ticketId);
   const context=await lockQueueContext(client,scope,false);
   const ticket=(await client.query(`SELECT t.id,t.status,t.version,t.joined_at,t.prefix_snapshot,t.sequence_number,t.queue_order,t.queue_session_id,
+    EXISTS(SELECT 1 FROM public.payments p WHERE p.join_request_id=t.join_request_id AND p.business_id=t.business_id AND p.provider='MOCK' AND p.is_settlement) AS simulated_payment,
     s.status AS session_status,s.business_date::text,s.revision::text,b.name AS business_name,br.public_slug,br.address,sv.estimated_duration_minutes
     FROM public.queue_tickets t JOIN public.queue_sessions s ON s.id=t.queue_session_id JOIN public.businesses b ON b.id=t.business_id
     JOIN public.branches br ON br.id=t.branch_id JOIN public.services sv ON sv.id=t.service_id
@@ -77,7 +78,7 @@ export async function ticketSnapshot(client:PoolClient,userId:string,ticketId:st
     serviceActive:context.businessActive&&context.branchActive&&context.serviceActive,waiting:ticket.status==='WAITING',counters});
   return {
     notifications:await customerNotifications(client,userId,ticketId),mockWhatsAppAvailable:mockWhatsAppEnabled,
-    ticket:{id:ticket.id,queueNumber:formatQueueNumber(ticket.prefix_snapshot,ticket.sequence_number),status:ticket.status,version:ticket.version,joinedAt:ticket.joined_at.toISOString()},
+    ticket:{simulatedPayment:ticket.simulated_payment===true,id:ticket.id,queueNumber:formatQueueNumber(ticket.prefix_snapshot,ticket.sequence_number),status:ticket.status,version:ticket.version,joinedAt:ticket.joined_at.toISOString()},
     business:{name:ticket.business_name},branch:{name:context.branchName,publicSlug:ticket.public_slug,address:ticket.address},service:{id:scope.serviceId,name:context.serviceName},
     queue:{...eta,sessionStatus:ticket.session_status,nowServing:handling.map(t=>formatQueueNumber(t.prefix_snapshot,t.sequence_number)),revision:ticket.revision,generatedAt:now.toISOString(),realtimeTopic:'queue:'+ticket.queue_session_id},
   };

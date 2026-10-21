@@ -21,7 +21,7 @@ export type EtaStatus='AVAILABLE'|'PAUSED'|'UNAVAILABLE';
 export interface EtaResult {peopleAhead:number;estimatedWaitMinutes:number|null;etaStatus:EtaStatus;calculatedAt:string;}
 export interface CustomerTicketSnapshot {
   notifications:CustomerNotification[];mockWhatsAppAvailable:boolean;
-  ticket:{id:string;queueNumber:string;status:QueueStatus;version:number;joinedAt:string};
+  ticket:{simulatedPayment:boolean;id:string;queueNumber:string;status:QueueStatus;version:number;joinedAt:string};
   business:{name:string};branch:{name:string;publicSlug:string;address:string|null};service:{id:string;name:string};
   queue:EtaResult & {sessionStatus:QueueSessionStatus;nowServing:string[];revision:string;generatedAt:string;realtimeTopic:string};
 }

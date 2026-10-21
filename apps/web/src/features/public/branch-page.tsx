@@ -13,6 +13,7 @@ export function PublicBranchPage(){
     <h2 className="mb-4 mt-8 text-xl font-semibold">Choose a service</h2><div className="grid gap-4 sm:grid-cols-2">{services.map(service=><Panel key={service.id}>
       <h3 className="text-xl font-semibold">{service.name}</h3>{service.description&&<p className="mt-2 text-sm text-slate-500">{service.description}</p>}
       <p className="mt-5 text-xl font-semibold text-teal-900">{money(service.price_amount)}</p><p className="mt-1 text-sm text-slate-500">~{service.estimated_duration_minutes} minute service</p>
+      {service.payment_simulated&&<p className="mt-3 text-sm font-semibold text-amber-900">SIMULASI PEMBAYARAN — TIDAK ADA UANG ASLI</p>}
       <p className="mt-5 text-sm font-medium">Queue: {labels[service.queue_status]}</p>
       {service.payment_mode==='DEPOSIT'&&service.deposit_amount&&<p className="mt-2 text-sm text-slate-600">Deposit {money(service.deposit_amount)}</p>}{service.payment_mode==='FULL'&&<p className="mt-2 text-sm text-slate-600">Payment required</p>}
       {service.payment_mode!=='NONE'&&!service.online_payment_available?<p className="mt-3 text-sm text-slate-500">Online payment queue joining is not available yet.</p>:<Link className="button mt-4 min-h-12 w-full justify-center" to={'/q/'+branch.public_slug+'/services/'+service.id+'/join'}>{service.queue_status==='OPEN'?(service.payment_mode==='NONE'?'Join queue':service.payment_mode==='DEPOSIT'?'Pay deposit & join':'Pay & join'):'Check queue'}</Link>}
