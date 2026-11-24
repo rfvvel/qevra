@@ -122,6 +122,9 @@ test('Phase 3 queue operations and independent-connection concurrency', {skip:!p
     await t.test('pause blocks admissions and calls; stale revision conflicts; resume works',async()=>{
       let state=await snap();await call('/queue/pause',{sessionId,expectedRevision:state.revision});
       await call('/queue/call-next',{counterId:counters[0]},409);
+      const blocked=await fetch(root+path,{method:'DELETE',headers:{Authorization:'Bearer '+owner,'Content-Type':'application/json'},body:JSON.stringify({name:'Queue test'})});
+      assert.equal(blocked.status,409);
+      assert.match((await blocked.json()).error.message,/queue/);
       const req=await request(sessionId);await assert.rejects(admit(req.id),{status:409});
       await call('/queue/resume',{sessionId,expectedRevision:state.revision},409);
       state=await snap();await call('/queue/resume',{sessionId,expectedRevision:state.revision});
@@ -166,11 +169,20 @@ test('Phase 3 queue operations and independent-connection concurrency', {skip:!p
       assert.equal((await call('/queue/call-next',{counterId:counters[1]})).outcome,'EMPTY');
       state=await snap();await call('/queue/close',{sessionId,expectedRevision:state.revision});
       await call('/queue/call-next',{counterId:counters[1]},409);
+      const blocked=await fetch(root+path,{method:'DELETE',headers:{Authorization:'Bearer '+owner,'Content-Type':'application/json'},body:JSON.stringify({name:'Queue test'})});
+      assert.equal(blocked.status,409);
+      assert.match((await blocked.json()).error.message,/tickets/);
       const req=await request(sessionId);await assert.rejects(admit(req.id),{status:409});
       await ticketAction(last.ticketId!,'start');await ticketAction(last.ticketId!,'complete');
       await call('/queue/open',{},409);
       const events=await call<{events:unknown[]}>('/history');assert.ok(events.events.length>0);
       const snapshot=await snap();assert.ok(!JSON.stringify(snapshot).includes('phone'));assert.equal(snapshot.session?.status,'CLOSED');
+    });
+    await t.test('simultaneous archive requests have one winner',async()=>{
+      const url=root+'/branches/'+otherBranch+'/services/'+otherBranchService;
+      const archive=()=>fetch(url,{method:'DELETE',headers:{Authorization:'Bearer '+owner,'Content-Type':'application/json'},body:JSON.stringify({name:'Queue test'})});
+      const responses=await Promise.all([archive(),archive()]);
+      assert.deepEqual(responses.map(r=>r.status).sort(),[200,404]);
     });
   }finally{
     auth.mock.restore();server.closeAllConnections();await new Promise<void>(resolve=>server.close(()=>resolve()));

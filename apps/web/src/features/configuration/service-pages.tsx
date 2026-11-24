@@ -1,3 +1,4 @@
+import {ArchiveAction} from './archive-action';
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { BusinessRole, counterCreateSchema, type ServiceDto, type CounterDto } from '@qevra/contracts';
@@ -49,6 +50,7 @@ function Counters({ path, canWrite }: { path: string; canWrite: boolean }) {
 export function ServiceSettingsPage() {
   const { business } = useBusiness(), { branchId, serviceId } = useParams();
   const path = '/businesses/' + business.id + '/branches/' + branchId + '/services/' + serviceId;
+  const branch = useResource<{name:string}>('/businesses/'+business.id+'/branches/'+branchId);
   const resource = useResource<ServiceDto>(path), canWrite = business.role !== BusinessRole.STAFF;
   if (resource.loading) return <Loading />;
   if (!resource.data) return <ErrorNotice message={resource.error} />;
@@ -56,5 +58,6 @@ export function ServiceSettingsPage() {
   return <><PageTitle title={service.name} actions={<Link className="button" to={'/app/' + business.id + '/branches/' + branchId + '/services/' + serviceId + '/queue'}>Open queue</Link>} description={canWrite ? 'Configure this service and its serving capacity.' : 'Assigned service · read-only configuration'} /><div className="grid gap-6 xl:grid-cols-2">
     <Panel title="Service settings">{canWrite ? <ServiceForm key={service.id} initial={service} save={async body => { await request(path, { method: 'PATCH', body }); resource.reload(); }} /> : <div className="space-y-3"><p>{service.description}</p><p>{money(service.price_amount)} · ~{service.estimated_duration_minutes} min</p><Badge active={service.is_active} /></div>}</Panel>
     <Counters path={path + '/counters'} canWrite={canWrite} />
+    {business.role===BusinessRole.OWNER && branch.data && <ArchiveAction key={service.id} path={path} name={service.name} business={business.name} branch={branch.data.name} destination={'/app/'+business.id+'/branches/'+branchId+'/services'}/>}
   </div></>;
 }

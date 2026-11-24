@@ -57,3 +57,5 @@ export interface ServiceDto extends ServiceCreate { id: string; business_id: str
 export interface CounterDto extends CounterCreate { id: string; business_id: string; branch_id: string; service_id: string; }
 export interface MemberDto { id: string; user_id: string; display_name: string; normalized_email: string | null; role: BusinessRole; is_active: boolean; branch_ids: string[]; service_ids: string[]; }
 export interface PublicBranchDto { business_name: string; branch: Pick<BranchDto, 'name' | 'public_slug' | 'address' | 'timezone'>; services: (Pick<ServiceDto, 'id' | 'name' | 'description' | 'price_amount' | 'currency' | 'estimated_duration_minutes' | 'payment_mode' | 'deposit_amount'> & { online_payment_available:boolean; payment_simulated:boolean; queue_status: 'OPEN' | 'PAUSED' | 'CLOSED' | 'NOT_OPENED' })[]; }
+
+export const archiveConfirmationSchema = z.object({ name: z.string().min(1).max(200) }).strict();

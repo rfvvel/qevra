@@ -1,11 +1,12 @@
 import { Router, type Request } from 'express';
 import type { PoolClient } from 'pg';
-import { memberByEmailSchema, BusinessRole, uuidSchema, slugSchema, businessCreateSchema, businessPatchSchema, branchCreateSchema, branchPatchSchema, serviceCreateSchema, servicePatchSchema, counterCreateSchema, counterPatchSchema, memberCreateSchema, memberPatchSchema, assignmentsSchema, type BusinessDto, type CounterDto } from '@qevra/contracts';
+import { archiveConfirmationSchema, memberByEmailSchema, BusinessRole, uuidSchema, slugSchema, businessCreateSchema, businessPatchSchema, branchCreateSchema, branchPatchSchema, serviceCreateSchema, servicePatchSchema, counterCreateSchema, counterPatchSchema, memberCreateSchema, memberPatchSchema, assignmentsSchema, type BusinessDto, type CounterDto } from '@qevra/contracts';
 import { requireAuth, requireStaff } from '../../middleware/authentication.js';
 import { withTransaction } from '../../db/transaction.js';
 import { HttpError } from '../../shared/http-error.js';
 import { allow, businessScope, branchAccess, serviceAccess, missing, type Scope } from './access.js';
 import { one, businessDto, branchDto, serviceDto, counterDto, counterColumns, listBranches, listServices, members } from './repository.js';
+import { archiveResource } from './archive.js';
 export type TransactionRunner = <T>(operation: (client: PoolClient) => Promise<T>) => Promise<T>;
 const id = (req: Request, key: string) => uuidSchema.parse(req.params[key]);
 const writeRoles = [BusinessRole.OWNER, BusinessRole.MANAGER];
@@ -21,7 +22,7 @@ export function createConfigurationRouter(run: TransactionRunner = withTransacti
     res.json(await run(async client => (await client.query<BusinessDto>(`SELECT b.id, b.name, b.slug,
       CASE WHEN b.is_active THEN 'ACTIVE' ELSE 'INACTIVE' END AS status, m.role
       FROM public.businesses b JOIN public.business_members m ON m.business_id = b.id
-      WHERE m.user_id = $1 AND m.is_active AND (b.is_active OR m.role = 'OWNER') ORDER BY b.name, b.id`, [req.actor!.userId])).rows));
+      WHERE b.archived_at IS NULL AND m.user_id = $1 AND m.is_active AND (b.is_active OR m.role = 'OWNER') ORDER BY b.name, b.id`, [req.actor!.userId])).rows));
   });
   router.post('/', async (req, res) => {
     const data = businessCreateSchema.parse(req.body);
@@ -67,6 +68,26 @@ export function createConfigurationRouter(run: TransactionRunner = withTransacti
     }));
   });
   const services = '/:businessId/branches/:branchId/services';
+  router.get('/:businessId/archive-counts', async (req,res) => {
+    res.json(await scoped(req,false,async (client,scope) => {
+      allow(scope,[BusinessRole.OWNER]);
+      return (await client.query(`SELECT
+        (SELECT count(*)::int FROM public.branches WHERE business_id=$1) AS branches,
+        (SELECT count(*)::int FROM public.services WHERE business_id=$1 AND archived_at IS NULL) AS services`,[scope.businessId])).rows[0];
+    }));
+  });
+  for (const path of ['/:businessId', services + '/:serviceId']) {
+    router.delete(path, async (req,res) => {
+      const result = await scoped(req,true,async (client,scope) => {
+        allow(scope,[BusinessRole.OWNER]);
+        const serviceId = req.params.serviceId ? id(req,'serviceId') : null;
+        if (serviceId) await serviceAccess(client,scope,id(req,'branchId'),serviceId,true);
+        const {name} = archiveConfirmationSchema.parse(req.body);
+        return archiveResource(client,scope.businessId,serviceId,req.actor!.userId,name);
+      });
+      res.json(result);
+    });
+  }
   router.get(services, async (req, res) => res.json(await scoped(req, false, async (client, scope) => {
     const branchId = id(req, 'branchId'); await branchAccess(client, scope, branchId, false);
     return listServices(client, scope, branchId);
@@ -173,7 +194,7 @@ export function createConfigurationRouter(run: TransactionRunner = withTransacti
       if (!member) throw missing();
       if (!member.is_active || member.role === BusinessRole.OWNER || (member.role === BusinessRole.MANAGER && data.service_ids.length)) throw new HttpError(400, 'INVALID_ASSIGNMENT', 'Assign branches to active managers/staff and services to staff only.');
       const branches = await client.query('SELECT id FROM public.branches WHERE business_id=$1 AND id=ANY($2::uuid[])', [scope.businessId, data.branch_ids]);
-      const services = await client.query('SELECT id FROM public.services WHERE business_id=$1 AND branch_id=ANY($2::uuid[]) AND id=ANY($3::uuid[])', [scope.businessId, data.branch_ids, data.service_ids]);
+      const services = await client.query('SELECT id FROM public.services WHERE archived_at IS NULL AND business_id=$1 AND branch_id=ANY($2::uuid[]) AND id=ANY($3::uuid[])', [scope.businessId, data.branch_ids, data.service_ids]);
       if (branches.rowCount !== data.branch_ids.length || services.rowCount !== data.service_ids.length) throw new HttpError(400, 'INVALID_ASSIGNMENT', 'Every branch/service must belong to this business and selected branch scope.');
       await client.query('DELETE FROM public.staff_services WHERE business_id=$1 AND member_id=$2', [scope.businessId, memberId]);
       await client.query('DELETE FROM public.branch_members WHERE business_id=$1 AND member_id=$2', [scope.businessId, memberId]);

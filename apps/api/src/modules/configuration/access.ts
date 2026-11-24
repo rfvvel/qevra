@@ -9,9 +9,9 @@ export function allow(scope: Scope, roles: BusinessRole[]): void { if (!roles.in
 // Read locks prevent scope revocation midway through a read. Every mutation takes
 // the same business lock BEFORE loading current membership, serializing role and
 // assignment changes and protecting the last active OWNER.
-export async function businessScope(client: PoolClient, businessId: string, userId: string, write: boolean): Promise<Scope> {
+export async function businessScope(client: PoolClient, businessId: string, userId: string, write: boolean, historical = false): Promise<Scope> {
   const business = await client.query<{ is_active: boolean }>(
-    'SELECT is_active FROM public.businesses WHERE id = $1 ' + (write ? 'FOR UPDATE' : 'FOR SHARE'), [businessId]);
+    'SELECT is_active FROM public.businesses WHERE id = $1 ' + (historical ? '' : 'AND archived_at IS NULL ') + (write ? 'FOR UPDATE' : 'FOR SHARE'), [businessId]);
   if (!business.rows[0]) throw missing();
   const member = await client.query<{ id: string; role: BusinessRole }>(
     'SELECT id, role FROM public.business_members WHERE business_id = $1 AND user_id = $2 AND is_active', [businessId, userId]);
@@ -30,7 +30,7 @@ export async function branchAccess(client: PoolClient, scope: Scope, branchId: s
 }
 export async function serviceAccess(client: PoolClient, scope: Scope, branchId: string, serviceId: string, write: boolean): Promise<void> {
   await branchAccess(client, scope, branchId, write);
-  const service = await client.query('SELECT id FROM public.services WHERE business_id = $1 AND branch_id = $2 AND id = $3', [scope.businessId, branchId, serviceId]);
+  const service = await client.query('SELECT id FROM public.services WHERE business_id = $1 AND branch_id = $2 AND id = $3 AND archived_at IS NULL', [scope.businessId, branchId, serviceId]);
   if (!service.rowCount) throw missing();
   if (scope.role === BusinessRole.STAFF) {
     const assignment = await client.query('SELECT 1 FROM public.staff_services WHERE business_id = $1 AND branch_id = $2 AND service_id = $3 AND member_id = $4', [scope.businessId, branchId, serviceId, scope.memberId]);

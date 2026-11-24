@@ -1,3 +1,4 @@
+import {ArchiveAction} from './archive-action';
 import { Link, useNavigate } from 'react-router-dom';
 import { BusinessRole, type BusinessDto } from '@qevra/contracts';
 import { useResource } from '../../lib/use-resource';
@@ -21,5 +22,5 @@ export function BusinessOverviewPage() {
   return <><PageTitle title={business.name} description="Set up your business, then welcome customers to your queue." />
     <div className="mb-6 grid gap-4 sm:grid-cols-2"><Panel title="Branches & services"><p className="mb-4 text-sm text-slate-500">Configure locations, service offerings and serving capacity.</p><Link className="text-sm font-medium text-teal-800" to={'/app/' + business.id + '/branches'}>Manage branches →</Link></Panel><Panel title="Your access"><p className="text-lg font-semibold">{business.role}</p><p className="mt-2 text-sm text-slate-500">{business.role === BusinessRole.OWNER ? 'Business-wide configuration and team management.' : 'Your branch and service assignments determine what you can access.'}</p></Panel></div>
     {business.role === BusinessRole.OWNER && <div className="mb-6"><Panel title="Get your first queue ready"><ol className="list-inside list-decimal space-y-2 text-sm text-slate-600"><li>Create a branch for your location.</li><li>Add a service and its counters.</li><li>Open the service queue.</li><li>Copy the Customer Queue Link from the branch page.</li></ol><Link className="button mt-5" to={'/app/' + business.id + '/branches'}>Set up branches & services</Link></Panel></div>}
-    {business.role === BusinessRole.OWNER && <div className="max-w-2xl"><Panel title="Business information"><BusinessForm key={business.id} initial={business} save={async body => { await request('/businesses/' + business.id, { method: 'PATCH', body }); reloadBusiness(); }} /></Panel></div>}</>;
+    {business.role === BusinessRole.OWNER && <div className="max-w-2xl"><Panel title="Business information"><BusinessForm key={business.id} initial={business} save={async body => { await request('/businesses/' + business.id, { method: 'PATCH', body }); reloadBusiness(); }} /><ArchiveAction key={business.id} path={'/businesses/'+business.id} name={business.name} business={business.name} destination='/app'/></Panel></div>}</>;
 }

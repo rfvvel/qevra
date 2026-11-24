@@ -36,7 +36,7 @@ test('Phase 2 HTTP operations enforce configuration integrity on PostgreSQL', { 
   await once(server, 'listening');
   const base = 'http://127.0.0.1:' + (server.address() as AddressInfo).port + '/api/v1';
   async function call<T>(user: string | null, path: string, method = 'GET', body?: unknown, status = 200): Promise<T> {
-    const response = await fetch(base + path, { method, headers: { ...(user ? { Authorization: 'Bearer ' + user } : {}), ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) }, body: body === undefined ? undefined : JSON.stringify(body) });
+    const response = await fetch(base + path, { method, headers: { ...(user ? { Authorization: 'Bearer ' + user } : {}), ...(body === undefined ? {} : { 'Content-Type': 'application/json', 'Idempotency-Key': randomUUID() }) }, body: body === undefined ? undefined : JSON.stringify(body) });
     assert.equal(response.status, status, method + ' ' + path);
     return await response.json() as T;
   }
@@ -160,6 +160,31 @@ test('Phase 2 HTTP operations enforce configuration integrity on PostgreSQL', { 
       await call(null, '/public/branches/' + branchA.public_slug, 'GET', undefined, 404);
       await call(manager, '/businesses/' + a.id, 'GET', undefined, 404);
       await call(owner, '/businesses/' + a.id, 'PATCH', { status: 'ACTIVE' });
+    });
+    await t.test('only owners archive resources and historical rows survive', async () => {
+      const business = '/businesses/'+a.id;
+      const path = business+'/branches/'+branchA.id+'/services/'+serviceX.id;
+      const name = 'Updated haircut';
+      await call(manager,path,'DELETE',{name},403);
+      await call(outsider,path,'DELETE',{name},404);
+      await call(owner,path,'DELETE',{name:'Stale name'},409);
+      const session = (await client.query("INSERT INTO public.queue_sessions(business_id,branch_id,service_id,business_date) VALUES($1,$2,$3,(now() AT TIME ZONE 'Asia/Jakarta')::date) RETURNING id",[a.id,branchA.id,serviceX.id])).rows[0];
+      await call(owner,path,'DELETE',{name},409);
+      await call(owner,business,'DELETE',{name:a.name},409);
+      await client.query("UPDATE public.queue_sessions SET business_date=business_date-1 WHERE id=$1",[session.id]);
+      await call(owner,path,'DELETE',{name});
+      await call(owner,path,'DELETE',{name},404);
+      await call(owner,path,'PATCH',{is_active:true},404);
+      const catalog = await call<{services:{id:string}[]}>(null,'/public/branches/'+branchA.public_slug);
+      assert.ok(!catalog.services.some(row=>row.id===serviceX.id));
+      await call(owner,business+'/branches/'+branchA.id+'/services/'+serviceY.id,'PATCH',{is_active:true});
+      await call(owner,business,'DELETE',{name:a.name+' '},409);
+      await call(owner,business,'DELETE',{name:a.name});
+      await call(owner,business,'PATCH',{status:'ACTIVE'},404);
+      await call(null,'/public/branches/'+branchA.public_slug,'GET',undefined,404);
+      await call(guest,'/customer/join-requests','POST',{branchSlug:branchA.public_slug,serviceId:serviceY.id,customerName:'Guest',phone:'',whatsappOptIn:false},409);
+      assert.equal((await client.query('SELECT id FROM public.queue_sessions WHERE id=$1',[session.id])).rowCount,1);
+      await call(owner,business+'/analytics');
     });
   } finally {
     server.closeAllConnections();

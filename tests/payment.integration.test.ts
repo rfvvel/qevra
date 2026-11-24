@@ -132,6 +132,21 @@ test('Phase 5 payment admission and concurrent PostgreSQL transactions',{skip:!p
       const expired=await api('/join-requests/'+id);assert.equal(expired.joinRequest.status,'EXPIRED');assert.equal(expired.canRetry,false);
       await api('/join-requests/'+id+'/payments',{},409);assert.equal(await ticketCount(id),0);
     });
+    await t.test('old paused session and timed-out mock attempt permit archive; reconciliation still blocks',async()=>{
+      const {service,id,checkout}=await begin();
+      const archive=()=>fetch(base.replace(/customer$/,'businesses')+'/'+biz+'/branches/'+branch+'/services/'+service,{
+        method:'DELETE',headers:{Authorization:'Bearer '+owner,'Content-Type':'application/json'},body:JSON.stringify({name:'Payment test'})
+      });
+      await pool.query("UPDATE public.queue_sessions SET status='PAUSED',business_date=business_date-1 WHERE service_id=$1",[service]);
+      assert.equal((await archive()).status,409);
+      await pool.query("UPDATE public.join_requests SET created_at=now()-interval '2 hours',expires_at=now()-interval '1 hour' WHERE id=$1",[id]);
+      await pool.query("UPDATE public.payments SET reconciliation_reason='TEST_REVIEW' WHERE id=$1",[checkout.payment.id]);
+      assert.equal((await archive()).status,409);
+      await pool.query("UPDATE public.payments SET reconciliation_reason=NULL WHERE id=$1",[checkout.payment.id]);
+      assert.equal((await archive()).status,200);
+      await confirm(checkout.payment.id,'SUCCESS',409);
+      assert.equal(await ticketCount(id),0);
+    });
   }finally{
     auth.mock.restore();server.closeAllConnections();await new Promise<void>(resolve=>server.close(()=>resolve()));
     await run(async client=>{

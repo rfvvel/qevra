@@ -80,5 +80,19 @@ test('Phase 7 operational analytics',{skip:!process.env.TEST_DATABASE_URL},async
    await pool.query('UPDATE public.branches SET is_active=false WHERE id=$1',[f.branches[0]]);
    const inactive=await api();assert.equal(inactive.live.waiting,0);assert.equal(inactive.summary.joined,11);
   });
+  await t.test('archiving a service preserves ticket and event based metrics',async()=>{
+   const service=f.services[1];
+   const filter='range=LAST_30_DAYS&serviceId='+service;
+   const before=await api(f.owner,filter);
+   assert.ok(before.summary.completed>0);
+   await pool.query("UPDATE public.queue_sessions SET status='CLOSED' WHERE business_id=$1 AND service_id=$2",[f.business,service]);
+   const response=await fetch('http://127.0.0.1:'+(server.address() as AddressInfo).port+'/api/v1/businesses/'+f.business+'/branches/'+f.branches[0]+'/services/'+service,{
+    method:'DELETE',headers:{Authorization:'Bearer '+f.owner,'Content-Type':'application/json'},body:JSON.stringify({name:'Hair Coloring'})
+   });
+   assert.equal(response.status,200);
+   const after=await api(f.owner,filter);
+   assert.deepEqual(after.summary,before.summary);
+   assert.deepEqual(after.byService,before.byService);
+  });
  }finally{server.closeAllConnections();await new Promise<void>(resolve=>server.close(()=>resolve()));auth.mock.restore();await run(f.cleanup);await pool.end();}
 });

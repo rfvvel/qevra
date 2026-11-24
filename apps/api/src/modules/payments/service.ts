@@ -159,6 +159,12 @@ export class PaymentService {
     const row=(await client.query<PaymentRow>(`SELECT p.* FROM public.payments p JOIN public.join_requests j ON j.id=p.join_request_id
       WHERE p.id=$1 AND j.customer_auth_id=$2`,[paymentId,userId])).rows[0];
     if(!row||row.provider!=='MOCK')throw missing();
+    // Serialize a customer simulation with archive before generating a financial event.
+    await client.query('SELECT id FROM public.businesses WHERE id=$1 FOR SHARE',[row.business_id]);
+    const archived=await client.query(`SELECT 1 FROM public.join_requests j
+      JOIN public.businesses b ON b.id=j.business_id JOIN public.services s ON s.id=j.service_id
+      WHERE j.id=$1 AND (b.archived_at IS NOT NULL OR s.archived_at IS NOT NULL)`,[row.join_request_id]);
+    if(archived.rowCount)throw conflict('This checkout has been archived.','CHECKOUT_UNAVAILABLE');
     const notification=mockPaymentProvider.simulate({reference:row.provider_reference,eventId:'mock:'+row.id+':'+key,outcome,amount:row.amount,currency:row.currency});
     const requestId=await this.confirm(client,notification);
     return this.checkout(client,userId,requestId,enabled);

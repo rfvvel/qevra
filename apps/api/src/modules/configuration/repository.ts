@@ -30,7 +30,7 @@ export async function listBranches(client: PoolClient, scope: Scope): Promise<Br
     ORDER BY b.name, b.id`, [scope.businessId, scope.role === BusinessRole.OWNER, scope.memberId])).rows;
 }
 export async function listServices(client: PoolClient, scope: Scope, branchId: string): Promise<ServiceDto[]> {
-  return (await client.query<ServiceDto>(`SELECT ${serviceColumns} FROM public.services s WHERE s.business_id = $1 AND s.branch_id = $2
+  return (await client.query<ServiceDto>(`SELECT ${serviceColumns} FROM public.services s WHERE s.business_id = $1 AND s.branch_id = $2 AND s.archived_at IS NULL
     AND ($3::boolean OR EXISTS (SELECT 1 FROM public.staff_services ss WHERE ss.business_id = s.business_id AND ss.branch_id = s.branch_id AND ss.service_id = s.id AND ss.member_id = $4))
     ORDER BY s.name, s.id`, [scope.businessId, branchId, scope.role !== BusinessRole.STAFF, scope.memberId])).rows;
 }

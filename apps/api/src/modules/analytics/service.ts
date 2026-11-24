@@ -78,7 +78,7 @@ SELECT CURRENT_TIMESTAMP AS "generatedAt",
 `;
 const empty:AnalyticsMetrics={joined:0,completed:0,cancelled:0,noShow:0,averageWaitMinutes:null,averageServiceMinutes:null,waitSamples:0,serviceSamples:0};
 export async function dashboard(client:PoolClient,businessId:string,userId:string,query:AnalyticsQuery):Promise<AnalyticsDashboard>{
- const scope=await businessScope(client,businessId,userId,false);
+ const scope=await businessScope(client,businessId,userId,false,true);
  allow(scope,[BusinessRole.OWNER,BusinessRole.MANAGER]);
  const days=query.range==='LAST_30_DAYS'?30:query.range==='LAST_7_DAYS'?7:1;
  const branches=(await client.query<AnalyticsDashboard['branches'][number]>(`
